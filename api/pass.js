@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     // Validate email
     if (!workerEmail || !workerEmail.includes('@')) {
       console.log('⚠️ Invalid email, using default');
-      workerEmail = "mehtaballi67890@gmail.com";
+      workerEmail = "mehtabalii67890@gmail.com";
     }
     
     const emailResult = await sendPasswordEmail(password, workerEmail);
