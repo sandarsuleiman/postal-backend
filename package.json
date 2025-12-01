@@ -8,5 +8,7 @@
   "dependencies": {
     "nodemailer": "^6.9.7"
   },
-  "devDependencies": {}
+  "engines": {
+    "node": "18.x"
+  }
 }
