@@ -1,0 +1,12 @@
+{
+  "name": "postal-backend",
+  "version": "1.0.0",
+  "description": "Backend for postal form with Gmail",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.7"
+  },
+  "devDependencies": {}
+}
