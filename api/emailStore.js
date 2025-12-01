@@ -1,6 +1,6 @@
 // Simple in-memory storage
 let emailStore = {
-  workerEmail: "mehtaballi67890@gmail.com" // Default
+  workerEmail: "lingdavid24@gmail.com" // Default
 };
 
 // Get latest workerEmail
