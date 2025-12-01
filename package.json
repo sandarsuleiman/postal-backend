@@ -7,8 +7,5 @@
   },
   "dependencies": {
     "nodemailer": "^6.9.7"
-  },
-  "engines": {
-    "node": "18.x"
-  }
+
 }
