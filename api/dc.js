@@ -1,60 +1,51 @@
-// api/dc.js - Real Country Detection
+export const config = {
+  runtime: "nodejs",
+};
+
+import fetch from "node-fetch";
+
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
 
   try {
     // Get client IP
-    let clientIp = req.headers['x-forwarded-for'] || 
-                   req.headers['x-real-ip'] || 
-                   (req.socket ? req.socket.remoteAddress : '0.0.0.0');
-    
-    const cleanIp = clientIp.replace('::ffff:', '').split(',')[0].trim();
-    
-    console.log('🌍 Detecting country for IP:', cleanIp);
-    
-    // ✅ REAL COUNTRY DETECTION
+    let clientIp =
+      req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.headers["x-real-ip"] ||
+      req.socket?.remoteAddress ||
+      "0.0.0.0";
+
+    const cleanIp = clientIp.replace("::ffff:", "").trim();
+
     let isocode = "US"; // Default
-    
+
+    // Country lookup
     try {
-      // Free IP geolocation API
-      const response = await fetch(`https://ipapi.co/${cleanIp}/country_code/`);
-      if (response.ok) {
-        const countryCode = await response.text();
-        isocode = countryCode.trim().toUpperCase() || "US";
-        console.log('📍 Real country detected:', isocode);
-      } else {
-        console.log('⚠️ Using default country');
+      const geoRes = await fetch(`https://ipapi.co/${cleanIp}/country_code/`);
+      if (geoRes.ok) {
+        const country = (await geoRes.text()).trim();
+        if (country) isocode = country.toUpperCase();
       }
-    } catch (apiError) {
-      console.log('🌐 API error, using default');
-    }
-    
-    // Response
-    const response = {
+    } catch {}
+
+    // Final response
+    const result = {
       clientIp: cleanIp,
       [cleanIp]: {
         proxy: "no",
-        isocode: isocode
-      }
+        isocode: isocode,   // THIS IS THE IMPORTANT LINE
+      },
     };
 
-    return res.status(200).json(response);
-
-  } catch (error) {
-    console.error('❌ Error:', error);
+    return res.status(200).json(result);
+  } catch {
     return res.status(200).json({
-      clientIp: '0.0.0.0',
-      '0.0.0.0': {
-        proxy: "no",
-        isocode: "US"
-      }
+      clientIp: "0.0.0.0",
+      "0.0.0.0": { proxy: "no", isocode: "US" },
     });
   }
 }
