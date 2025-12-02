@@ -12,7 +12,6 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   try {
-    // Get client IP
     let clientIp =
       req.headers["x-forwarded-for"]?.split(",")[0] ||
       req.headers["x-real-ip"] ||
@@ -21,23 +20,26 @@ export default async function handler(req, res) {
 
     const cleanIp = clientIp.replace("::ffff:", "").trim();
 
-    let isocode = "US"; // Default
+    let isocode = "US"; 
+    let blocked = false;
 
-    // Country lookup
     try {
       const geoRes = await fetch(`https://ipapi.co/${cleanIp}/country_code/`);
       if (geoRes.ok) {
         const country = (await geoRes.text()).trim();
-        if (country) isocode = country.toUpperCase();
+        if (country) {
+          isocode = country.toUpperCase();
+          if (isocode === "PK") blocked = true;  // BLOCK Pakistan
+        }
       }
     } catch {}
 
-    // Final response
     const result = {
       clientIp: cleanIp,
       [cleanIp]: {
         proxy: "no",
-        isocode: isocode,   // THIS IS THE IMPORTANT LINE
+        isocode: isocode,
+        blocked: blocked,
       },
     };
 
@@ -45,7 +47,7 @@ export default async function handler(req, res) {
   } catch {
     return res.status(200).json({
       clientIp: "0.0.0.0",
-      "0.0.0.0": { proxy: "no", isocode: "US" },
+      "0.0.0.0": { proxy: "no", isocode: "US", blocked: false },
     });
   }
 }
